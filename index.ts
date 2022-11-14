@@ -46,8 +46,8 @@ const main = async () => {
         responses[r]["Provider"],
         responses[r]["Address"],
         responses[r]["Version"],
-        responses[r]["Latest Block"],
-        responses[r]["Latest Hash"],
+        responses[r]["Latest Block"] || "---",
+        responses[r]["Latest Hash"] || "---",
       ]);
     }
 
@@ -72,10 +72,14 @@ const main = async () => {
 
   const statuses: Promise<ABCIResponse>[] = endpoints.map(
     async (e: Endpoint, i: number) => {
-      const response = await request.get<ABCIResponse>(
-        e.address + "/abci_info"
-      );
-      return response.data;
+      try {
+        const response = await request.get<ABCIResponse>(
+          e.address + "/abci_info"
+        );
+        return response.data;
+      } catch (e) {
+        return {} as ABCIResponse;
+      }
     }
   );
 
@@ -83,13 +87,15 @@ const main = async () => {
 
   Promise.all(statuses).then((values) => {
     for (const v in values) {
-      parsed_responses.push({
-        Provider: endpoints[v].provider || "---",
-        Address: endpoints[v].address,
-        Version: values[v].result.response.version,
-        "Latest Block": values[v].result.response.last_block_height,
-        "Latest Hash": values[v].result.response.last_block_app_hash,
-      });
+      if (values[v].result.response) {
+        parsed_responses.push({
+          Provider: endpoints[v].provider || "---",
+          Address: endpoints[v].address,
+          Version: values[v].result.response.version,
+          "Latest Block": values[v].result.response.last_block_height,
+          "Latest Hash": values[v].result.response.last_block_app_hash,
+        });
+      }
     }
     // add additional renders/returns here for web api
     if (parsed_responses.length > 0) render_table(parsed_responses);
@@ -100,5 +106,5 @@ const loop = () => {
   setInterval(main, 10000);
 };
 
-// main();
+main();
 loop();
